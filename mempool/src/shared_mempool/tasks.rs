@@ -151,6 +151,26 @@ pub(crate) async fn process_client_get_transaction<V>(
     }
 }
 
+pub(crate) async fn process_client_get_memepool<V>(
+    smp: SharedMempool<V>,
+    callback: oneshot::Sender<Vec<SignedTransaction>>,
+    timer: HistogramTimer,
+) where
+    V: TransactionValidation,
+{
+    timer.stop_and_record();
+    let _timer = counters::process_get_txn_latency_timer_client();
+    let txns = smp.mempool.lock().get_batch(100, 102400, HashSet::new());
+
+    if callback.send(txns).is_err() {
+        warn!(LogSchema::event_log(
+            LogEntry::GetMemepool,
+            LogEvent::CallbackFail
+        ));
+        counters::CLIENT_CALLBACK_FAIL.inc();
+    }
+}
+
 /// Processes transactions from other nodes.
 pub(crate) async fn process_transaction_broadcast<V>(
     smp: SharedMempool<V>,

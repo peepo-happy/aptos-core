@@ -204,6 +204,20 @@ impl TransactionsApi {
             .await
     }
 
+    #[oai(
+    path = "/transactions/get_memepool",
+    method = "get",
+    operation_id = "get_memepool",
+    tag = "ApiTags::Transactions"
+    )]
+    async fn get_memepool(
+        &self,
+        accept_type: AcceptType,
+    ) -> BasicResultWith404<Vec<Transaction>> {
+        fail_point_poem("endpoint_memepool")?;
+        self.get_memepool_inner(&accept_type).await
+    }
+
     /// Get transaction by version
     ///
     /// Retrieves a transaction by a given version.  If the version has been pruned, a 410 will
@@ -675,6 +689,27 @@ impl TransactionsApi {
             .await
     }
 
+    async fn get_memepool_inner(
+        &self,
+        accept_type: &AcceptType,
+    ) -> BasicResultWith404<Vec<Transaction>> {
+        let latest_ledger_info = self.context.get_latest_ledger_info()?;
+        let data = self
+            .get_memepool_inner_inner()
+            .await.unwrap();
+        match accept_type {
+            AcceptType::Json => BasicResponse::try_from_json((
+                self.context
+                    .render_memepool_transactions(&latest_ledger_info, data)?,
+                &latest_ledger_info,
+                BasicResponseStatus::Ok,
+            )),
+            AcceptType::Bcs => {
+                BasicResponse::try_from_bcs((data, &latest_ledger_info, BasicResponseStatus::Ok))
+            }
+        }
+    }
+
     async fn get_transaction_by_version_inner(
         &self,
         accept_type: &AcceptType,
@@ -786,6 +821,15 @@ impl TransactionsApi {
                 .map(|t| t.into()),
             _ => from_db.map(|t| t.into()),
         })
+    }
+
+    async fn get_memepool_inner_inner(
+        &self
+    ) -> anyhow::Result<Vec<SignedTransaction>> {
+        self
+            .context
+            .get_memepool()
+            .await
     }
 
     /// List all transactions for an account

@@ -409,6 +409,32 @@ impl Context {
         Ok(txns)
     }
 
+    pub fn render_memepool_transactions<E: InternalError>(
+        &self,
+        ledger_info: &LedgerInfo,
+        data: Vec<SignedTransaction>,
+    ) -> Result<Vec<aptos_api_types::Transaction>, E> {
+        if data.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let resolver = self.move_resolver_poem(ledger_info)?;
+        let converter = resolver.as_converter(self.db.clone());
+        let txns: Vec<aptos_api_types::Transaction> = data
+            .into_iter()
+            .map(|t| {
+                let txn = converter.try_into_pending_transaction( t)?;
+                Ok(txn)
+            })
+            .collect::<Result<_, anyhow::Error>>()
+            .context("Failed to convert memepool transactions")
+            .map_err(|err| {
+                E::internal_with_code(err, AptosErrorCode::InternalError, ledger_info)
+            })?;
+
+        Ok(txns)
+    }
+
     pub fn render_transactions_non_sequential<E: InternalError>(
         &self,
         ledger_info: &LedgerInfo,
@@ -562,6 +588,20 @@ impl Context {
         self.mp_sender
             .clone()
             .send(MempoolClientRequest::GetTransactionByHash(hash, req_sender))
+            .await
+            .map_err(anyhow::Error::from)?;
+
+        callback.await.map_err(anyhow::Error::from)
+    }
+
+    pub async fn get_memepool(
+        &self,
+    ) -> Result<Vec<SignedTransaction>> {
+        let (req_sender, callback) = oneshot::channel();
+
+        self.mp_sender
+            .clone()
+            .send(MempoolClientRequest::GetMemepool(req_sender))
             .await
             .map_err(anyhow::Error::from)?;
 

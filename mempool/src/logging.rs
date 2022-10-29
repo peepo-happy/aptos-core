@@ -155,6 +155,7 @@ pub enum LogEntry {
     ReconfigUpdate,
     JsonRpc,
     GetTransaction,
+    GetMemepool,
     GetBlock,
     QuorumStore,
     StateSyncCommit,
