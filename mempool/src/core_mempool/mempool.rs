@@ -65,6 +65,11 @@ impl Mempool {
             .commit_transaction(sender, sequence_number);
     }
 
+    pub(crate) fn get_memepool_size(&mut self) -> usize
+    {
+        self.transactions.size()
+    }
+
     pub(crate) fn reject_transaction(
         &mut self,
         sender: &AccountAddress,

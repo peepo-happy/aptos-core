@@ -161,7 +161,8 @@ pub(crate) async fn process_client_get_memepool<V>(
     timer.stop_and_record();
     let _timer = counters::process_get_txn_latency_timer_client();
     let txns = smp.mempool.lock().get_batch(100, 102400, HashSet::new());
-    info!("MEMEPOOL HERE: {:?}", txns);
+    let size = smp.mempool.lock().get_memepool_size();
+    info!("MEMEPOOL HERE: {:?}, size: {}", txns, size);
 
     if callback.send(txns).is_err() {
         warn!(LogSchema::event_log(

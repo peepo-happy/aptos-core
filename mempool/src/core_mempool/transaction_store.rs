@@ -116,6 +116,10 @@ impl TransactionStore {
             .and_then(|txns| txns.get(&sequence_number))
     }
 
+    pub(crate) fn size(&self) -> usize {
+        self.system_ttl_index.size()
+    }
+
     /// Fetch transaction by account address + sequence_number.
     pub(crate) fn get(
         &self,
